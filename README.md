@@ -58,14 +58,13 @@ Supports Windows (x64/x86), Linux (x64/arm64) and macOS 11+ (intel/apple).
 
 ## 本分支相对原版的主要改动
 
-- 便携版目录结构对齐 `iGame-for-Windows`：以 `Data/` 为根，配置与状态写入 `Data/app/`。
-- Windows WebView2 启动路径与数据目录增强：优先使用便携目录，增加可写性校验和回退策略，修复便携版偶发白屏。
-- 安装器 WebView2 改为显性提示（非静默），安装体验与 iGame+ 一致。
-- Windows 系统代理应用顺序修正（PAC/全局代理顺序），解决“开启后自动回退”问题；退出时可正确清理代理状态。
-- IP 信息查询链路改为后端直连请求（新增 `panel_http_request`），降低对核心 mixed 端口状态的依赖，提高稳定性。
-- 首页 IP 信息卡与自动刷新参数同步 iGame+，优化地理信息部分可用时的显示逻辑。
-- Windows 便携模式下改为手动窗口状态持久化，窗口位置大小写入 `Data/app/window_state.json`，不再落到 `%APPDATA%`。
-- 便携打包脚本更新：同时兼容不同 release 产物目录，并按 `Data/` 结构生成 zip。
+- 便携版统一使用 `Data/` 目录：配置与状态写入 `Data/app/`。
+- 优化 Windows WebView2 数据目录与回退逻辑，减少便携版白屏问题。
+- 安装器的 WebView2 改为显性提示（非静默安装）。
+- 修正 Windows 系统代理应用顺序，避免“开启后自动回退”。
+- 新增后端直连 IP 查询（`panel_http_request`），提升查询稳定性。
+- Windows 下窗口状态写入 `Data/app/window_state.json`，便携模式不落盘到 `%APPDATA%`。
+- 更新便携打包脚本，兼容不同 release 产物目录并生成 zip。
 
 ### FAQ
 
