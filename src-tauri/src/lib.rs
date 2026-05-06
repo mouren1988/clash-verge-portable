@@ -10,7 +10,7 @@ mod feat;
 mod module;
 mod process;
 pub mod utils;
-
+#[cfg(not(target_os = "windows"))]
 use crate::constants::files;
 use crate::{
     core::handle,
@@ -117,15 +117,27 @@ mod app_init {
         Ok(())
     }
 
-    /// Setup window state management
+    /// Setup window state management.
+    /// On Windows we use fully manual persistence (window_state.rs) so all
+    /// writes stay inside portable `Data/app` instead of `%APPDATA%`.
     pub fn setup_window_state(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
-        logging!(info, Type::Setup, "初始化窗口状态管理...");
-        let window_state_plugin = tauri_plugin_window_state::Builder::new()
-            .with_filename(files::WINDOW_STATE)
-            .with_state_flags(tauri_plugin_window_state::StateFlags::default())
-            .build();
-        app.handle().plugin(window_state_plugin)?;
-        Ok(())
+        #[cfg(target_os = "windows")]
+        {
+            logging!(info, Type::Setup, "Windows: 使用手动窗口状态持久化");
+            let _ = app;
+            return Ok(());
+        }
+
+        #[cfg(not(target_os = "windows"))]
+        {
+            logging!(info, Type::Setup, "初始化窗口状态管理...");
+            let window_state_plugin = tauri_plugin_window_state::Builder::new()
+                .with_filename(files::WINDOW_STATE)
+                .with_state_flags(tauri_plugin_window_state::StateFlags::default())
+                .build();
+            app.handle().plugin(window_state_plugin)?;
+            Ok(())
+        }
     }
 
     pub fn generate_handlers() -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Send + Sync + 'static {
@@ -137,6 +149,9 @@ mod app_init {
             cmd::is_port_in_use,
             cmd::get_sys_proxy,
             cmd::get_auto_proxy,
+            cmd::ip_detection_http_get,
+            cmd::panel_http_request,
+            cmd::refresh_system_proxy,
             cmd::open_app_dir,
             cmd::open_logs_dir,
             cmd::open_web_url,
@@ -220,14 +235,19 @@ mod app_init {
 }
 
 pub fn run() {
+    #[cfg(target_os = "windows")]
+    utils::dirs::apply_windows_webview2_user_data_bootstrap();
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = utils::dirs::init_portable_flag();
+    }
+
     if app_init::init_singleton_check().is_err() {
         return;
     }
 
     #[cfg(target_os = "linux")]
     utils::linux::workarounds::apply_nvidia_dmabuf_renderer_workaround();
-
-    let _ = utils::dirs::init_portable_flag();
 
     let builder = app_init::setup_plugins(tauri::Builder::default())
         .setup(|app| {
@@ -395,11 +415,19 @@ pub fn run() {
                 event_handlers::handle_reopen(has_visible_windows).await;
             });
         }
-        tauri::RunEvent::Exit => AsyncHandler::block_on(async {
-            if !handle::Handle::global().is_exiting() {
-                feat::quit().await;
+        tauri::RunEvent::Exit => {
+            #[cfg(target_os = "windows")]
+            if let Some(window) = app_handle.get_webview_window("main") {
+                utils::window_state::save_window_state(&window);
             }
-        }),
+            AsyncHandler::block_on(async {
+                if !handle::Handle::global().is_exiting() {
+                    feat::quit().await;
+                }
+            });
+            #[cfg(target_os = "windows")]
+            utils::dirs::cleanup_junctions();
+        }
         tauri::RunEvent::ExitRequested { api, code, .. } => {
             if core::handle::Handle::global().is_exiting() {
                 return;

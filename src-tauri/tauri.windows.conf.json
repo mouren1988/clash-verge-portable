@@ -9,7 +9,7 @@
       "timestampUrl": "",
       "webviewInstallMode": {
         "type": "embedBootstrapper",
-        "silent": true
+        "silent": false
       },
       "nsis": {
         "displayLanguageSelector": true,

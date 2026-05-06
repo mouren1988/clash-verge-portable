@@ -1,17 +1,55 @@
-import { useQuery } from '@tanstack/react-query'
-import { useRef } from 'react'
+import { useIsFetching, useQuery } from '@tanstack/react-query'
+import { useEffect, useRef } from 'react'
 import { closeAllConnections } from 'tauri-plugin-mihomo-api'
 
 import { useVerge } from '@/hooks/use-verge'
-import { useClashConfigData, useSystemData } from '@/providers/app-data-context'
+import {
+  useClashConfigData,
+  useCoreDataStatus,
+  useSystemData,
+} from '@/providers/app-data-context'
 import { getAutotemProxy } from '@/services/cmds'
 import { queryClient } from '@/services/query-client'
 
-// 系统代理状态检测统一逻辑
+/** 与后端 sysopt 一致取 mixed 端口；未设 verge 时依赖 Clash */
+function expectedMixedPort(
+  verge_mixed: number | undefined,
+  mixedFromClash: number | undefined,
+): number | null {
+  if (verge_mixed != null) return Number(verge_mixed)
+  if (mixedFromClash != null) return Number(mixedFromClash)
+  return null
+}
+
+const normalizeHost = (h: string) => {
+  const t = h.trim()
+  if (t === 'localhost') return '127.0.0.1'
+  return t
+}
+
+function systemServerMatches(
+  systemServer: string | undefined,
+  expectHost: string,
+  expectPort: number,
+): boolean {
+  if (!systemServer) return false
+  const last = systemServer.lastIndexOf(':')
+  if (last <= 0) return false
+  const p = Number.parseInt(systemServer.slice(last + 1), 10)
+  if (Number.isNaN(p)) return false
+  const h = systemServer.slice(0, last)
+  return normalizeHost(h) === normalizeHost(expectHost) && p === expectPort
+}
+
 export const useSystemProxyState = () => {
   const { verge, mutateVerge, patchVerge } = useVerge()
   const { sysproxy } = useSystemData()
   const { clashConfig } = useClashConfigData()
+  const { isCoreDataPending } = useCoreDataStatus()
+  const sysProxyReadFetching =
+    useIsFetching({ queryKey: ['getSystemProxy'] }) > 0
+  const autoProxyReadFetching =
+    useIsFetching({ queryKey: ['getAutotemProxy'] }) > 0
   const { data: autoproxy } = useQuery({
     queryKey: ['getAutotemProxy'],
     queryFn: getAutotemProxy,
@@ -26,21 +64,55 @@ export const useSystemProxyState = () => {
     verge_mixed_port,
   } = verge ?? {}
 
-  // OS 实际状态：enable + 地址匹配本应用
+  const vergeRef = useRef(verge)
+  useEffect(() => {
+    vergeRef.current = verge
+  }, [verge])
+
   const indicator = (() => {
     const host = proxy_host || '127.0.0.1'
     if (proxy_auto_config) {
-      if (!autoproxy?.enable) return false
+      if (!autoproxy?.enable) {
+        if (
+          enable_system_proxy &&
+          (autoProxyReadFetching || sysProxyReadFetching)
+        ) {
+          return true
+        }
+        return false
+      }
       const pacPort = import.meta.env.DEV ? 11233 : 33331
       return autoproxy.url === `http://${host}:${pacPort}/commands/pac`
     } else {
-      if (!sysproxy?.enable) return false
-      const port = verge_mixed_port || clashConfig?.mixedPort || 7897
-      return sysproxy.server === `${host}:${port}`
+      if (!sysproxy?.enable) {
+        if (
+          enable_system_proxy &&
+          (sysProxyReadFetching || autoProxyReadFetching)
+        ) {
+          return true
+        }
+        return false
+      }
+      const expectPort = expectedMixedPort(
+        verge_mixed_port,
+        clashConfig?.mixedPort,
+      )
+      if (expectPort == null) {
+        if (systemServerMatches(sysproxy.server, host, 7897)) return true
+        if (sysproxy?.enable && sysproxy.server) {
+          const last = sysproxy.server.lastIndexOf(':')
+          if (last > 0) {
+            const h = sysproxy.server.slice(0, last)
+            if (normalizeHost(h) === normalizeHost(host)) return true
+          }
+        }
+        if (isCoreDataPending && enable_system_proxy) return true
+        return false
+      }
+      return systemServerMatches(sysproxy.server, host, expectPort)
     }
   })()
 
-  // "最后一次生效"模式：快速连续点击时，只执行最终状态
   const pendingRef = useRef<boolean | null>(null)
   const busyRef = useRef(false)
 
@@ -58,10 +130,10 @@ export const useSystemProxyState = () => {
       while (pendingRef.current !== null) {
         const target = pendingRef.current
         pendingRef.current = null
-        await patchVerge({ enable_system_proxy: target })
-        if (!target && verge?.auto_close_connection) {
+        if (!target && vergeRef.current?.auto_close_connection) {
           await closeAllConnections().catch(() => {})
         }
+        await patchVerge({ enable_system_proxy: target })
       }
     } finally {
       busyRef.current = false

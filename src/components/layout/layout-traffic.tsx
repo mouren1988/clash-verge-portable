@@ -9,8 +9,8 @@ import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { LightweightTrafficErrorBoundary } from '@/components/shared/traffic-error-boundary'
-import { useMemoryData } from '@/hooks/use-memory-data'
-import { useTrafficData } from '@/hooks/use-traffic-data'
+import { useSharedMemoryData } from '@/hooks/use-shared-memory-data'
+import { useSharedTrafficData } from '@/hooks/use-shared-traffic-data'
 import { useVerge } from '@/hooks/use-verge'
 import { useVisibility } from '@/hooks/use-visibility'
 import parseTraffic from '@/utils/parse-traffic'
@@ -30,10 +30,10 @@ export const LayoutTraffic = () => {
 
   const {
     response: { data: traffic },
-  } = useTrafficData({ enabled: trafficGraph && pageVisible })
+  } = useSharedTrafficData()
   const {
     response: { data: memory },
-  } = useMemoryData()
+  } = useSharedMemoryData()
 
   // 监听数据变化，为图表添加数据点
   useEffect(() => {

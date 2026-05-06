@@ -25,8 +25,13 @@ const shouldSkipDuplicateTraffic = (traffic: Traffic) => {
   return false
 }
 
-export const useTrafficData = (options?: { enabled?: boolean }) => {
+export const useTrafficData = (options?: {
+  enabled?: boolean
+  /** 默认 400；关闭流量曲线时 TrafficDataProvider 会加大以降低更新频率 */
+  throttleMs?: number
+}) => {
   const enabled = options?.enabled ?? true
+  const throttleMs = options?.throttleMs ?? 400
 
   const {
     graphData: { appendData },
@@ -36,7 +41,7 @@ export const useTrafficData = (options?: { enabled?: boolean }) => {
     buildSubscriptKey: (date) => `getClashTraffic-${date}`,
     fallbackData: FALLBACK_TRAFFIC,
     connect: () => MihomoWebSocket.connect_traffic(),
-    throttleMs: 200,
+    throttleMs,
     setupHandlers: ({ next, scheduleReconnect }) => ({
       handleMessage: (data) => {
         if (data.startsWith('Websocket error')) {

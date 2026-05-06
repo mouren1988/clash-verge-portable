@@ -45,15 +45,33 @@ import {
   useRulesData,
 } from '@/providers/app-data-context'
 import delayManager from '@/services/delay'
+import { IP_INFO_QUERY_KEY } from '@/services/home-connectivity-refresh'
+import { queryClient } from '@/services/query-client'
+import { isSubscriptionKernelReloadDampenActive } from '@/services/subscription-reload-dampen'
 import { debugLog } from '@/utils/debug'
+import { pickGlobalAutoOutlet } from '@/utils/pick-global-auto-outlet'
+import { resolveLeafProxyRecord } from '@/utils/resolve-leaf-proxy'
 
 // 本地存储的键名
 const STORAGE_KEY_GROUP = 'clash-verge-selected-proxy-group'
 const STORAGE_KEY_PROXY = 'clash-verge-selected-proxy'
+const STORAGE_KEY_GLOBAL_USER_PICKED_DIRECT =
+  'clash-verge-global-user-picked-direct'
 const STORAGE_KEY_SORT_TYPE = 'clash-verge-proxy-sort-type'
 
 const AUTO_CHECK_DEFAULT_INTERVAL_MINUTES = 5
-const AUTO_CHECK_INITIAL_DELAY_MS = 100
+const AUTO_CHECK_INITIAL_DELAY_MS = 2200
+
+/** Mihomo 中可切换「当前策略」的组类型；仅认 Selector 会漏掉常见「自动选择」URLTest，导致首页无节点 */
+function isSelectableProxyGroupType(type?: string | null): boolean {
+  const t = (type ?? '').toLowerCase()
+  return (
+    t === 'selector' ||
+    t === 'urltest' ||
+    t === 'fallback' ||
+    t === 'loadbalance'
+  )
+}
 
 // 代理节点信息接口
 interface ProxyOption {
@@ -118,7 +136,7 @@ export const CurrentProxyCard = () => {
   const { isCoreDataPending } = useCoreDataStatus()
   const { verge } = useVerge()
   const { current: currentProfile } = useProfiles()
-  const autoDelayEnabled = verge?.enable_auto_delay_detection ?? false
+  const autoDelayEnabled = verge?.enable_auto_delay_detection ?? true
   const defaultLatencyTimeout = verge?.default_latency_timeout
   const autoDelayIntervalMs = useMemo(() => {
     const rawInterval = verge?.auto_delay_detection_interval_minutes
@@ -172,13 +190,15 @@ export const CurrentProxyCard = () => {
   )
 
   // 统一代理选择器
-  const { handleSelectChange } = useProxySelection({
+  const { changeProxy, handleSelectChange } = useProxySelection({
     onSuccess: () => {
       refreshProxy()
+      void queryClient.invalidateQueries({ queryKey: [IP_INFO_QUERY_KEY] })
     },
     onError: (error) => {
       console.error('代理切换失败', error)
       refreshProxy()
+      void queryClient.invalidateQueries({ queryKey: [IP_INFO_QUERY_KEY] })
     },
   })
 
@@ -198,6 +218,18 @@ export const CurrentProxyCard = () => {
     (value?: string | null) => (typeof value === 'string' ? value.trim() : ''),
     [],
   )
+
+  const globalAllNames = useMemo(() => {
+    const raw = proxies?.global?.all
+    if (!Array.isArray(raw)) return [] as string[]
+    return (raw as Array<string | { name?: string }>)
+      .map((item) =>
+        typeof item === 'string'
+          ? normalizePolicyName(item)
+          : normalizePolicyName(item?.name),
+      )
+      .filter((n): n is string => n.length > 0)
+  }, [proxies?.global, normalizePolicyName])
 
   const matchPolicyName = useMemo(() => {
     if (!Array.isArray(rules)) return ''
@@ -253,20 +285,41 @@ export const CurrentProxyCard = () => {
   const latestTimeoutRef = useRef<number>(
     verge?.default_latency_timeout || 10000,
   )
-  const latestProxyRecordRef = useRef<any | null>(null)
 
   useEffect(() => {
     latestTimeoutRef.current = verge?.default_latency_timeout || 10000
   }, [verge?.default_latency_timeout])
 
+  /**
+   * 自动测速回调若依赖 `state.proxyData.records`，每次 `checkCurrentProxyDelay` 末尾
+   * `refreshProxy()` 后 records 引用会变，useCallback 身份也变，进而重置「5 分钟」定时 effect，
+   * 只反复执行 `AUTO_CHECK_INITIAL_DELAY_MS`（约 2.x s），与原版行为不一致。此处用 ref 读最新数据、保持回调稳定。
+   */
+  const autoDelayCheckCtxRef = useRef<{
+    group: string
+    proxy: string
+    records: Record<string, any>
+    sortType: ProxySortType
+  }>({
+    group: '',
+    proxy: '',
+    records: {},
+    sortType: 0,
+  })
+
   useEffect(() => {
-    if (!state.selection.proxy) {
-      latestProxyRecordRef.current = null
-      return
+    autoDelayCheckCtxRef.current = {
+      group: state.selection.group,
+      proxy: state.selection.proxy,
+      records: state.proxyData.records,
+      sortType,
     }
-    latestProxyRecordRef.current =
-      state.proxyData.records?.[state.selection.proxy] || null
-  }, [state.selection.proxy, state.proxyData.records])
+  }, [
+    state.selection.group,
+    state.selection.proxy,
+    state.proxyData.records,
+    sortType,
+  ])
 
   // 初始化选择的组
   useEffect(() => {
@@ -274,6 +327,12 @@ export const CurrentProxyCard = () => {
 
     const getPrimaryGroupName = () => {
       if (!proxies?.groups?.length) return ''
+
+      const selectNodeGroup = proxies.groups.find(
+        (group: { name: string }) =>
+          typeof group.name === 'string' && group.name.includes('选择节点'),
+      )
+      if (selectNodeGroup) return selectNodeGroup.name
 
       const primaryKeywords = [
         'auto',
@@ -376,14 +435,28 @@ export const CurrentProxyCard = () => {
       }
 
       ;(proxies.groups || [])
-        .filter((g: { type?: string }) => g?.type === 'Selector')
+        .filter((g: { type?: string }) => isSelectableProxyGroupType(g?.type))
         .forEach((selectorGroup: any) => registerGroup(selectorGroup))
 
       const filteredGroups = Array.from(groupsMap.values())
 
+      const pickDefaultProxyForGroup = (
+        group: ProxyGroupOption,
+        savedProxy: string | null,
+      ) => {
+        if (savedProxy && group.all.includes(savedProxy)) {
+          return savedProxy
+        }
+        if (group.all.includes('自动选择')) {
+          return '自动选择'
+        }
+        return group.now || group.all[0] || ''
+      }
+
       let newProxy = ''
       let newDisplayProxy = null
       let newGroup = prev.selection.group
+      const savedProxyForProfile = readProfileScopedItem(STORAGE_KEY_PROXY)
 
       if (isDirectMode) {
         newGroup = 'DIRECT'
@@ -391,7 +464,16 @@ export const CurrentProxyCard = () => {
         newDisplayProxy = proxies.records?.DIRECT || { name: 'DIRECT' }
       } else if (isGlobalMode && proxies.global) {
         newGroup = 'GLOBAL'
-        newProxy = proxies.global.now || ''
+        const now = normalizePolicyName(proxies.global.now)
+        const userPickedDirect =
+          readProfileScopedItem(STORAGE_KEY_GLOBAL_USER_PICKED_DIRECT) === '1'
+        if (userPickedDirect) {
+          newProxy = now || 'DIRECT'
+        } else if (!now || now === 'DIRECT') {
+          newProxy = pickGlobalAutoOutlet(globalAllNames) ?? (now || '')
+        } else {
+          newProxy = now
+        }
         newDisplayProxy = proxies.records?.[newProxy] || null
       } else {
         const currentGroup = filteredGroups.find(
@@ -399,10 +481,15 @@ export const CurrentProxyCard = () => {
         )
 
         if (!currentGroup && filteredGroups.length > 0) {
-          const firstGroup = filteredGroups[0]
+          const firstGroup =
+            filteredGroups.find((g) => g.name.includes('选择节点')) ||
+            filteredGroups[0]
           if (firstGroup) {
             newGroup = firstGroup.name
-            newProxy = firstGroup.now || firstGroup.all[0] || ''
+            newProxy = pickDefaultProxyForGroup(
+              firstGroup,
+              savedProxyForProfile,
+            )
             newDisplayProxy = proxies.records?.[newProxy] || null
 
             if (!isGlobalMode && !isDirectMode) {
@@ -413,7 +500,10 @@ export const CurrentProxyCard = () => {
             }
           }
         } else if (currentGroup) {
-          newProxy = currentGroup.now || currentGroup.all[0] || ''
+          newProxy = pickDefaultProxyForGroup(
+            currentGroup,
+            savedProxyForProfile,
+          )
           newDisplayProxy = proxies.records?.[newProxy] || null
         }
       }
@@ -434,9 +524,33 @@ export const CurrentProxyCard = () => {
     proxies,
     isGlobalMode,
     isDirectMode,
+    globalAllNames,
     writeProfileScopedItem,
+    readProfileScopedItem,
     normalizePolicyName,
     matchPolicyName,
+  ])
+
+  // 全局下核心仍默认为 DIRECT 时，改为 URLTest/自动选择 类策略；用户显式选 DIRECT 时尊重
+  useEffect(() => {
+    if (!isGlobalMode || !proxies?.global) return
+    if (readProfileScopedItem(STORAGE_KEY_GLOBAL_USER_PICKED_DIRECT) === '1') {
+      return
+    }
+    if (globalAllNames.length === 0) return
+    const now = normalizePolicyName(proxies.global.now)
+    if (now && now !== 'DIRECT') return
+    const target = pickGlobalAutoOutlet(globalAllNames)
+    if (!target) return
+    if (now === target) return
+    changeProxy('GLOBAL', target, now || 'DIRECT', true)
+  }, [
+    isGlobalMode,
+    proxies?.global,
+    globalAllNames,
+    readProfileScopedItem,
+    normalizePolicyName,
+    changeProxy,
   ])
 
   // 使用防抖包装状态更新
@@ -453,12 +567,6 @@ export const CurrentProxyCard = () => {
     },
     [setState],
   )
-
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current)
-    }
-  }, [])
 
   // 处理代理组变更
   const handleGroupChange = useCallback(
@@ -517,6 +625,15 @@ export const CurrentProxyCard = () => {
         writeProfileScopedItem(STORAGE_KEY_PROXY, newProxy)
       }
 
+      if (isGlobalMode && typeof window !== 'undefined') {
+        const key = getProfileStorageKey(STORAGE_KEY_GLOBAL_USER_PICKED_DIRECT)
+        if (newProxy === 'DIRECT') {
+          localStorage.setItem(key, '1')
+        } else {
+          localStorage.removeItem(key)
+        }
+      }
+
       const skipConfigSave = isGlobalMode || isDirectMode
       handleSelectChange(currentGroup, previousProxy, skipConfigSave)(event)
     },
@@ -527,6 +644,7 @@ export const CurrentProxyCard = () => {
       debouncedSetState,
       handleSelectChange,
       writeProfileScopedItem,
+      getProfileStorageKey,
     ],
   )
 
@@ -535,15 +653,26 @@ export const CurrentProxyCard = () => {
     navigate('/proxies')
   }, [navigate])
 
-  // 获取要显示的代理节点
+  // 展示用节点：嵌套组（如 URLTest「自动选择」）解析为实际出口节点
   const currentProxy = useMemo(() => {
-    return state.displayProxy
-  }, [state.displayProxy])
+    if (!state.selection.proxy) return state.displayProxy
+    const leaf = resolveLeafProxyRecord(
+      state.selection.proxy,
+      state.proxyData.records,
+    )
+    return leaf ?? state.displayProxy
+  }, [state.selection.proxy, state.proxyData.records, state.displayProxy])
 
-  // 获取当前节点的延迟（增加非空校验）
+  // 与下拉框一致：用当前组里「选中的策略名」取延迟（与原版一致，避免顶部用叶子缓存导致与下面数字不一致、且批量测速时顶部长时间 testing）
+  const delayDisplayRecord = useMemo(() => {
+    const name = state.selection.proxy
+    if (!name || !state.proxyData.records) return null
+    return state.proxyData.records[name] ?? null
+  }, [state.selection.proxy, state.proxyData.records])
+
   const currentDelay =
-    currentProxy && state.selection.group
-      ? delayManager.getDelayFix(currentProxy, state.selection.group)
+    delayDisplayRecord && state.selection.group
+      ? delayManager.getDelayFix(delayDisplayRecord, state.selection.group)
       : -1
 
   // 信号图标（增加非空校验）
@@ -555,16 +684,21 @@ export const CurrentProxyCard = () => {
   const checkCurrentProxyDelay = useCallback(async () => {
     if (autoCheckInProgressRef.current) return
     if (isDirectMode) return
+    if (isSubscriptionKernelReloadDampenActive()) return
 
-    const groupName = state.selection.group
-    const proxyName = state.selection.proxy
+    const {
+      group: groupName,
+      proxy: selectionName,
+      records,
+      sortType: st,
+    } = autoDelayCheckCtxRef.current
 
-    if (!groupName || !proxyName) return
+    if (!groupName || !selectionName) return
 
-    const proxyRecord = latestProxyRecordRef.current
+    const proxyRecord = records?.[selectionName]
     if (!proxyRecord) {
       debugLog(
-        `[CurrentProxyCard] 自动延迟检测跳过，组: ${groupName}, 节点: ${proxyName} 未找到`,
+        `[CurrentProxyCard] 自动延迟检测跳过，组: ${groupName}, 节点: ${selectionName} 未找到`,
       )
       return
     }
@@ -575,33 +709,26 @@ export const CurrentProxyCard = () => {
 
     try {
       debugLog(
-        `[CurrentProxyCard] 自动检测当前节点延迟，组: ${groupName}, 节点: ${proxyName}`,
+        `[CurrentProxyCard] 自动检测当前节点延迟，组: ${groupName}, 测速策略: ${selectionName}`,
       )
       if (proxyRecord.provider) {
         await healthcheckProxyProvider(proxyRecord.provider)
       } else {
-        await delayManager.checkDelay(proxyName, groupName, timeout)
+        await delayManager.checkDelay(selectionName, groupName, timeout)
       }
     } catch (error) {
       console.error(
-        `[CurrentProxyCard] 自动检测当前节点延迟失败，组: ${groupName}, 节点: ${proxyName}`,
+        `[CurrentProxyCard] 自动检测当前节点延迟失败，组: ${groupName}, 节点: ${selectionName}`,
         error,
       )
     } finally {
       autoCheckInProgressRef.current = false
       refreshProxy()
-      if (sortType === 1) {
+      if (st === 1) {
         setDelaySortRefresh((prev) => prev + 1)
       }
     }
-  }, [
-    isDirectMode,
-    refreshProxy,
-    state.selection.group,
-    state.selection.proxy,
-    sortType,
-    setDelaySortRefresh,
-  ])
+  }, [isDirectMode, refreshProxy, setDelaySortRefresh])
 
   useEffect(() => {
     if (isDirectMode) return
@@ -730,7 +857,8 @@ export const CurrentProxyCard = () => {
       debugLog(`[CurrentProxyCard] 测试URL: ${url}, 超时: ${timeout}ms`)
 
       try {
-        await Promise.race([
+        // 勿用 Promise.race：先完成的一方会让 await 返回，另一方仍把大量节点留在 -2(testing)
+        await Promise.all([
           delayManager.checkListDelay(proxyNames, groupName, timeout),
           delayGroup(groupName, url, timeout),
         ])
@@ -921,9 +1049,7 @@ export const CurrentProxyCard = () => {
         </Box>
       }
     >
-      {isCoreDataPending ? (
-        <Box sx={{ py: 4 }} />
-      ) : currentProxy ? (
+      {currentProxy ? (
         <Box>
           {/* 代理节点信息显示 */}
           <Box
@@ -932,14 +1058,14 @@ export const CurrentProxyCard = () => {
               alignItems: 'center',
               justifyContent: 'space-between',
               p: 1,
-              mb: 2,
+              mb: 1,
               borderRadius: 1,
               bgcolor: alpha(theme.palette.primary.main, 0.05),
               border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
             }}
           >
             <Box>
-              <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+              <Typography variant="body1" sx={{ fontWeight: 500 }}>
                 {currentProxy.name}
               </Typography>
 
@@ -998,12 +1124,7 @@ export const CurrentProxyCard = () => {
             )}
           </Box>
           {/* 代理组选择器 */}
-          <FormControl
-            fullWidth
-            variant="outlined"
-            size="small"
-            sx={{ mb: 1.5 }}
-          >
+          <FormControl fullWidth variant="outlined" size="small" sx={{ mb: 1 }}>
             <InputLabel id="proxy-group-select-label">
               {t('home.components.currentProxy.labels.group')}
             </InputLabel>
@@ -1037,9 +1158,7 @@ export const CurrentProxyCard = () => {
               MenuProps={{
                 slotProps: {
                   paper: {
-                    style: {
-                      maxHeight: 500,
-                    },
+                    style: { maxHeight: 500 },
                   },
                 },
               }}
@@ -1087,8 +1206,17 @@ export const CurrentProxyCard = () => {
           </FormControl>
         </Box>
       ) : (
-        <Box sx={{ textAlign: 'center', py: 4 }}>
-          <Typography variant="body1" color="text.secondary">
+        <Box
+          sx={{
+            textAlign: 'center',
+            py: 2,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: 0,
+          }}
+        >
+          <Typography variant="body2" color="text.secondary">
             {t('home.components.currentProxy.labels.noActiveNode')}
           </Typography>
         </Box>

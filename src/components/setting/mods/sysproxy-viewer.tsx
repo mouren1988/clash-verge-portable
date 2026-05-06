@@ -36,20 +36,13 @@ import { useSystemProxyState } from '@/hooks/use-system-proxy-state'
 import { useVerge } from '@/hooks/use-verge'
 import { useClashConfigData, useSystemData } from '@/providers/app-data-context'
 import {
-  getAutotemProxy,
   getNetworkInterfacesInfo,
   getSystemHostname,
-  getSystemProxy,
-  patchVergeConfig,
+  refreshSystemProxy,
 } from '@/services/cmds'
 import { showNotice } from '@/services/notice-service'
 import { debugLog } from '@/utils/debug'
 import getSystem from '@/utils/get-system'
-
-const sleep = (ms: number) =>
-  new Promise<void>((resolve) => {
-    setTimeout(resolve, ms)
-  })
 
 const DEFAULT_PAC = `function FindProxyForURL(url, host) {
   return "PROXY %proxy_host%:%mixed-port%; SOCKS5 %proxy_host%:%mixed-port%; DIRECT;";
@@ -161,16 +154,10 @@ export const SysproxyViewer = forwardRef<DialogRef>((props, ref) => {
     }
 
     const updateProxy = async () => {
+      if (!enabled) return
       try {
-        const currentSysProxy = await getSystemProxy()
-        const currentAutoProxy = await getAutotemProxy()
-
-        if (value.pac ? currentAutoProxy?.enable : currentSysProxy?.enable) {
-          await patchVergeConfig({ enable_system_proxy: false })
-          await sleep(200)
-          await patchVergeConfig({ enable_system_proxy: true })
-          await invalidateProxyState()
-        }
+        await refreshSystemProxy()
+        await invalidateProxyState()
       } catch (err) {
         showNotice.error(err)
       }
@@ -414,21 +401,8 @@ export const SysproxyViewer = forwardRef<DialogRef>((props, ref) => {
 
             // 如果需要重置代理且代理当前启用
             if (needResetProxy && enabled) {
-              const [currentSysProxy, currentAutoProxy] = await Promise.all([
-                getSystemProxy(),
-                getAutotemProxy(),
-              ])
-
-              const isProxyActive = value.pac
-                ? currentAutoProxy?.enable
-                : currentSysProxy?.enable
-
-              if (isProxyActive) {
-                await patchVergeConfig({ enable_system_proxy: false })
-                await new Promise((resolve) => setTimeout(resolve, 50))
-                await patchVergeConfig({ enable_system_proxy: true })
-                await invalidateProxyState()
-              }
+              await refreshSystemProxy()
+              await invalidateProxyState()
             }
           } catch (err) {
             console.warn('代理状态更新失败:', err)

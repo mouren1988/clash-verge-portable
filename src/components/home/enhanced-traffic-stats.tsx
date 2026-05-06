@@ -19,8 +19,8 @@ import { useTranslation } from 'react-i18next'
 
 import { TrafficErrorBoundary } from '@/components/shared/traffic-error-boundary'
 import { useConnectionData } from '@/hooks/use-connection-data'
-import { useMemoryData } from '@/hooks/use-memory-data'
-import { useTrafficData } from '@/hooks/use-traffic-data'
+import { useSharedMemoryData } from '@/hooks/use-shared-memory-data'
+import { useSharedTrafficData } from '@/hooks/use-shared-traffic-data'
 import { useVerge } from '@/hooks/use-verge'
 import { useVisibility } from '@/hooks/use-visibility'
 import parseTraffic from '@/utils/parse-traffic'
@@ -150,11 +150,11 @@ export const EnhancedTrafficStats = () => {
 
   const {
     response: { data: traffic },
-  } = useTrafficData({ enabled: trafficGraph && pageVisible })
+  } = useSharedTrafficData()
 
   const {
     response: { data: memory },
-  } = useMemoryData()
+  } = useSharedMemoryData()
 
   const {
     response: { data: connections },

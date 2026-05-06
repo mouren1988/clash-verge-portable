@@ -461,6 +461,11 @@ FunctionEnd
   !include "{{this}}"
 {{/each}}
 
+; 非静默 WebView2 安装前提示（与 iGame+ 一致；`tauri.windows.conf.json` 中 `silent: false`）。
+LangString WEBVIEW2_SILENT_NOTICE ${LANG_ENGLISH} "WebView2 Runtime is not installed on this system.$\r$\nAfter you click OK, a Microsoft installer window will open so you can see download and installation progress.$\r$\nOn slow networks this may take several minutes; keep this setup wizard open until it finishes."
+LangString WEBVIEW2_SILENT_NOTICE ${LANG_SIMPCHINESE} "检测到系统缺少 WebView2 运行环境。$\r$\n点击「确定」后将弹出微软安装程序，可查看下载与安装进度。$\r$\n网络较慢时可能需要数分钟，请在该窗口完成前不要关闭本安装向导。"
+LangString WEBVIEW2_SILENT_NOTICE ${LANG_RUSSIAN} "На этом компьютере не установлена среда выполнения WebView2.$\r$\nПосле нажатия «OK» откроется установщик Microsoft с ходом загрузки и установки.$\r$\nПри медленной сети это может занять несколько минут — не закрывайте этот мастер до завершения."
+
 Function .onInit
   ${GetOptions} $CMDLINE "/P" $PassiveMode
   ${IfNot} ${Errors}
@@ -801,6 +806,9 @@ Section WebView2
     ;
     ; Skip if updating
     ${If} $UpdateMode <> 1
+      ${If} $PassiveMode <> 1
+        MessageBox MB_OK|MB_ICONINFORMATION "$(WEBVIEW2_SILENT_NOTICE)"
+      ${EndIf}
       !if "${INSTALLWEBVIEW2MODE}" == "downloadBootstrapper"
         Delete "$TEMP\MicrosoftEdgeWebview2Setup.exe"
         DetailPrint "$(webview2Downloading)"

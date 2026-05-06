@@ -4,6 +4,7 @@ import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { DialogRef, TooltipIcon } from '@/components/base'
+import { PORTABLE_EDITION } from '@/constants/portable-edition'
 import { updateLastCheckTime } from '@/hooks/use-update'
 import {
   exitApp,
@@ -80,7 +81,7 @@ const SettingVergeAdvanced = ({ onError: _ }: Props) => {
       <HotkeyViewer ref={hotkeyRef} />
       <MiscViewer ref={miscRef} />
       <LayoutViewer ref={layoutRef} />
-      <UpdateViewer ref={updateRef} />
+      {!PORTABLE_EDITION && <UpdateViewer ref={updateRef} />}
       <BackupViewer ref={backupRef} />
       <LiteModeViewer ref={liteModeRef} />
 
@@ -121,10 +122,12 @@ const SettingVergeAdvanced = ({ onError: _ }: Props) => {
         label={t('settings.components.verge.advanced.fields.openLogsDir')}
       />
 
-      <SettingItem
-        onClick={onCheckUpdate}
-        label={t('settings.components.verge.advanced.fields.checkUpdates')}
-      />
+      {!PORTABLE_EDITION && (
+        <SettingItem
+          onClick={onCheckUpdate}
+          label={t('settings.components.verge.advanced.fields.checkUpdates')}
+        />
+      )}
 
       <SettingItem
         onClick={openDevTools}

@@ -102,7 +102,7 @@ export const SystemInfoCard = () => {
   const onCheckUpdate = useLockFn(async () => {
     try {
       const result = await triggerCheckUpdate()
-      const info = result.data
+      const info = result?.data
       if (!info?.available) {
         showNotice.success(
           'settings.components.verge.advanced.notifications.latestVersion',

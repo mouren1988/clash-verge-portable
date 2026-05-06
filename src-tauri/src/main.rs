@@ -25,5 +25,9 @@ fn main() {
     #[cfg(feature = "tokio-trace")]
     console_subscriber::init();
 
+    // 须在加载 WebView2 之前设置 `WEBVIEW2_USER_DATA_FOLDER`，并与 `Data/` 便携布局一致（参见 iGame-for-Windows）。
+    #[cfg(target_os = "windows")]
+    app_lib::utils::dirs::apply_windows_webview2_user_data_bootstrap();
+
     app_lib::run();
 }

@@ -20,14 +20,16 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { getIpInfo } from '@/services/api'
+import { formatCountryTitleForDisplay, getIpInfo } from '@/services/api'
+import {
+  IP_INFO_AUTO_REFRESH_INTERVAL_SEC,
+  IP_INFO_QUERY_KEY,
+} from '@/services/home-connectivity-refresh'
 
 import { EnhancedCard } from './enhanced-card'
 
-// 定义刷新时间（秒）
-const IP_REFRESH_SECONDS = 300
+const IP_REFRESH_SECONDS = IP_INFO_AUTO_REFRESH_INTERVAL_SEC
 const COUNTDOWN_TICK_INTERVAL = 5_000
-const IP_INFO_CACHE_KEY = 'cv_ip_info_cache'
 
 const InfoItem = memo(({ label, value }: { label: string; value?: string }) => (
   <Box sx={{ mb: 0.7, display: 'flex', alignItems: 'flex-start' }}>
@@ -263,7 +265,14 @@ export const IpInfoCard = () => {
         </Box>
       )
       break
-    default: // Normal render
+    default: {
+      const hasIp = Boolean(ipInfo?.ip && String(ipInfo.ip).trim())
+      const hasGeoCore = Boolean(
+        ipInfo?.country_code || ipInfo?.country || ipInfo?.organization,
+      )
+      const geoDetailUnavailable = hasIp && !hasGeoCore
+      const geoRowPlaceholder = geoDetailUnavailable ? '\u2014' : undefined
+
       mainElement = (
         <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
           <Box
@@ -280,15 +289,15 @@ export const IpInfoCard = () => {
                 sx={{
                   display: 'flex',
                   alignItems: 'center',
-                  mb: 1,
+                  mb: 0.65,
                   overflow: 'hidden',
                 }}
               >
                 <Box
                   component="span"
                   sx={{
-                    fontSize: '1.5rem',
-                    mr: 1,
+                    fontSize: '1.25rem',
+                    mr: 0.75,
                     display: 'inline-block',
                     width: 28,
                     textAlign: 'center',
@@ -308,12 +317,14 @@ export const IpInfoCard = () => {
                     maxWidth: '100%',
                   }}
                 >
-                  {ipInfo?.country ||
-                    t('home.components.ipInfo.labels.unknown')}
+                  {formatCountryTitleForDisplay(ipInfo) ||
+                    (ipInfo?.ip
+                      ? t('home.components.ipInfo.labels.geoPartial')
+                      : t('home.components.ipInfo.labels.unknown'))}
                 </Typography>
               </Box>
 
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.65 }}>
                 <Typography
                   variant="body2"
                   color="text.secondary"
@@ -354,7 +365,13 @@ export const IpInfoCard = () => {
 
               <InfoItem
                 label={t('home.components.ipInfo.labels.asn')}
-                value={ipInfo?.asn ? `AS${ipInfo.asn}` : 'N/A'}
+                value={
+                  ipInfo?.asn
+                    ? `AS${ipInfo.asn}`
+                    : geoDetailUnavailable
+                      ? geoRowPlaceholder
+                      : 'N/A'
+                }
               />
             </Box>
 
@@ -362,21 +379,22 @@ export const IpInfoCard = () => {
             <Box sx={{ width: '60%', overflow: 'auto' }}>
               <InfoItem
                 label={t('home.components.ipInfo.labels.isp')}
-                value={ipInfo?.organization}
+                value={ipInfo?.organization || geoRowPlaceholder}
               />
               <InfoItem
                 label={t('home.components.ipInfo.labels.org')}
-                value={ipInfo?.asn_organization}
+                value={ipInfo?.asn_organization || geoRowPlaceholder}
               />
               <InfoItem
                 label={t('home.components.ipInfo.labels.location')}
-                value={[ipInfo?.city, ipInfo?.region]
-                  .filter(Boolean)
-                  .join(', ')}
+                value={
+                  [ipInfo?.city, ipInfo?.region].filter(Boolean).join(', ') ||
+                  geoRowPlaceholder
+                }
               />
               <InfoItem
                 label={t('home.components.ipInfo.labels.timezone')}
-                value={ipInfo?.timezone}
+                value={ipInfo?.timezone || geoRowPlaceholder}
               />
             </Box>
           </Box>
@@ -384,7 +402,7 @@ export const IpInfoCard = () => {
           <Box
             sx={{
               mt: 'auto',
-              pt: 0.5,
+              pt: 0.35,
               borderTop: 1,
               borderColor: 'divider',
               display: 'flex',
@@ -413,6 +431,7 @@ export const IpInfoCard = () => {
           </Box>
         </Box>
       )
+    }
   }
 
   return (
@@ -422,13 +441,13 @@ export const IpInfoCard = () => {
 
 function useIPInfo() {
   return useQuery({
-    queryKey: [IP_INFO_CACHE_KEY],
+    queryKey: [IP_INFO_QUERY_KEY],
     queryFn: getIpInfo,
     staleTime: Infinity,
-    gcTime: 60 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     retry: 1,
-    retryDelay: 30_000,
+    retryDelay: 2_000,
   })
 }

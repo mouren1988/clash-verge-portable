@@ -41,8 +41,8 @@ const TabButton: FC<TabButtonProps> = memo(
       onClick={onClick}
       sx={{
         cursor: 'pointer',
-        px: 2,
-        py: 1,
+        px: 1.75,
+        py: 0.75,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -109,7 +109,7 @@ const TabDescription: FC<TabDescriptionProps> = memo(
           width: '95%',
           textAlign: 'center',
           color: 'text.secondary',
-          p: 0.8,
+          p: 0.55,
           borderRadius: 1,
           borderColor: 'primary.main',
           borderWidth: 1,
@@ -138,12 +138,12 @@ export const ProxyTunCard: FC = () => {
   const { t } = useTranslation()
   const theme = useTheme()
   const [activeTab, setActiveTab] = useState<string>(
-    () => localStorage.getItem(LOCAL_STORAGE_TAB_KEY) || 'system',
+    () => localStorage.getItem(LOCAL_STORAGE_TAB_KEY) || 'tun',
   )
 
   const { verge } = useVerge()
   const { isTunModeAvailable } = useSystemState()
-  const { configState: systemProxyConfigState } = useSystemProxyState()
+  const { indicator: systemProxyIndicator } = useSystemProxyState()
 
   const { enable_tun_mode } = verge ?? {}
 
@@ -159,7 +159,7 @@ export const ProxyTunCard: FC = () => {
   const tabDescription = useMemo(() => {
     if (activeTab === 'system') {
       return {
-        text: systemProxyConfigState
+        text: systemProxyIndicator
           ? t('home.components.proxyTun.status.systemProxyEnabled')
           : t('home.components.proxyTun.status.systemProxyDisabled'),
         tooltip: t('home.components.proxyTun.tooltips.systemProxy'),
@@ -174,13 +174,7 @@ export const ProxyTunCard: FC = () => {
         tooltip: t('home.components.proxyTun.tooltips.tunMode'),
       }
     }
-  }, [
-    activeTab,
-    systemProxyConfigState,
-    enable_tun_mode,
-    isTunModeAvailable,
-    t,
-  ])
+  }, [activeTab, systemProxyIndicator, enable_tun_mode, isTunModeAvailable, t])
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
@@ -195,25 +189,25 @@ export const ProxyTunCard: FC = () => {
         }}
       >
         <TabButton
-          isActive={activeTab === 'system'}
-          onClick={() => handleTabChange('system')}
-          icon={ComputerRounded}
-          label={t('settings.sections.system.toggles.systemProxy')}
-          hasIndicator={systemProxyConfigState}
-        />
-        <TabButton
           isActive={activeTab === 'tun'}
           onClick={() => handleTabChange('tun')}
           icon={TroubleshootRounded}
           label={t('settings.sections.system.toggles.tunMode')}
           hasIndicator={enable_tun_mode && isTunModeAvailable}
         />
+        <TabButton
+          isActive={activeTab === 'system'}
+          onClick={() => handleTabChange('system')}
+          icon={ComputerRounded}
+          label={t('settings.sections.system.toggles.systemProxy')}
+          hasIndicator={systemProxyIndicator}
+        />
       </Stack>
 
       <Box
         sx={{
           width: '100%',
-          my: 1,
+          my: 0.5,
           position: 'relative',
           display: 'flex',
           justifyContent: 'center',
@@ -229,7 +223,7 @@ export const ProxyTunCard: FC = () => {
       <Box
         sx={{
           mt: 0,
-          p: 1,
+          p: 0.75,
           bgcolor: alpha(theme.palette.primary.main, 0.04),
           borderRadius: 2,
         }}

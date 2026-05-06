@@ -84,12 +84,18 @@ export interface TranslationResources {
           labels: {
             asn: string
             autoRefresh: string
+            geoPartial: string
             ip: string
             isp: string
             location: string
             org: string
             timezone: string
             unknown: string
+          }
+          proxyStateToast: {
+            failOpen: string
+            successClose: string
+            successOpen: string
           }
           title: string
         }

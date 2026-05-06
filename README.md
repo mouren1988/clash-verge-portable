@@ -107,6 +107,19 @@ pnpm run prebuild
 pnpm dev
 ```
 
+## Build And Release (Windows)
+
+常用命令（在项目根目录执行）：
+
+```shell
+pnpm build
+pnpm portable
+```
+
+- `pnpm build` 生成安装包（NSIS）到 `target/release/bundle/nsis/`
+- `pnpm portable` 生成便携压缩包到项目根目录（`Clash.Verge_<version>_<arch>_portable.zip`）
+- 便携版数据目录使用 `Data/` 结构，配置与状态默认写入 `Data/app/`
+
 ## Contributions
 
 Issue and PR welcome!

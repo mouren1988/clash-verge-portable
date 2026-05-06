@@ -5,6 +5,7 @@ import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { DialogRef, TooltipIcon } from '@/components/base'
+import { PORTABLE_EDITION } from '@/constants/portable-edition'
 import { useVerge } from '@/hooks/use-verge'
 import { navItems } from '@/pages/_routers'
 import { copyClashEnv } from '@/services/cmds'
@@ -85,7 +86,7 @@ const SettingVergeBasic = ({ onError }: Props) => {
       <HotkeyViewer ref={hotkeyRef} />
       <MiscViewer ref={miscRef} />
       <LayoutViewer ref={layoutRef} />
-      <UpdateViewer ref={updateRef} />
+      {!PORTABLE_EDITION && <UpdateViewer ref={updateRef} />}
       <BackupViewer ref={backupRef} />
 
       <SettingItem label={t('settings.components.verge.basic.fields.language')}>

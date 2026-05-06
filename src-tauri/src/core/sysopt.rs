@@ -188,10 +188,31 @@ impl Sysopt {
         let apply_steps = proxy_apply_steps(sys.enable, auto.enable);
 
         tokio::task::spawn_blocking(move || -> Result<()> {
+            logging!(
+                info,
+                Type::Core,
+                "sysproxy: sys.enable={} auto.enable={} host={} port={}",
+                sys.enable,
+                auto.enable,
+                sys.host,
+                sys.port
+            );
             for step in apply_steps {
                 match step {
-                    ProxyApplyStep::Autoproxy => auto.set_auto_proxy()?,
-                    ProxyApplyStep::Sysproxy => sys.set_system_proxy()?,
+                    ProxyApplyStep::Autoproxy => {
+                        auto.set_auto_proxy().map_err(|e| {
+                            logging!(error, Type::Core, "sysproxy: set_auto_proxy FAILED: {e}");
+                            e
+                        })?;
+                        logging!(info, Type::Core, "sysproxy: set_auto_proxy OK");
+                    }
+                    ProxyApplyStep::Sysproxy => {
+                        sys.set_system_proxy().map_err(|e| {
+                            logging!(error, Type::Core, "sysproxy: set_system_proxy FAILED: {e}");
+                            e
+                        })?;
+                        logging!(info, Type::Core, "sysproxy: set_system_proxy OK");
+                    }
                 }
             }
             Ok(())
@@ -226,8 +247,9 @@ impl Sysopt {
         };
 
         tokio::task::spawn_blocking(move || -> Result<()> {
-            sys.set_system_proxy()?;
+            // Same ordering rule: auto first, then sys last.
             auto.set_auto_proxy()?;
+            sys.set_system_proxy()?;
             Ok(())
         })
         .await??;

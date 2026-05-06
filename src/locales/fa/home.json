@@ -79,10 +79,16 @@
         "location": "Location",
         "timezone": "Timezone",
         "autoRefresh": "Auto refresh",
-        "unknown": "Unknown"
+        "unknown": "Unknown",
+        "geoPartial": "Geo details unavailable"
       },
       "errors": {
         "load": "دریافت اطلاعات IP با خطا مواجه شد"
+      },
+      "proxyStateToast": {
+        "successOpen": "Proxy enabled successfully",
+        "successClose": "Proxy disabled successfully",
+        "failOpen": "Failed to enable proxy"
       }
     },
     "currentProxy": {

@@ -79,10 +79,16 @@
         "location": "位置",
         "timezone": "タイムゾーン",
         "autoRefresh": "自動更新",
-        "unknown": "不明"
+        "unknown": "不明",
+        "geoPartial": "Geo details unavailable"
       },
       "errors": {
         "load": "IP情報の取得に失敗しました"
+      },
+      "proxyStateToast": {
+        "successOpen": "Proxy enabled successfully",
+        "successClose": "Proxy disabled successfully",
+        "failOpen": "Failed to enable proxy"
       }
     },
     "currentProxy": {

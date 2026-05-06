@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 
+import { PORTABLE_EDITION } from '@/constants/portable-edition'
 import { queryClient } from '@/services/query-client'
 import { checkUpdateSafe } from '@/services/update'
 
@@ -38,7 +39,8 @@ export const useUpdate = (enabled: boolean = true) => {
   // Determine if we should check for updates
   // If enabled is explicitly false, don't check
   // Otherwise, respect the auto_check_update setting (or default to true if null/undefined for manual triggers)
-  const shouldCheck = enabled && auto_check_update !== false
+  const shouldCheck =
+    !PORTABLE_EDITION && enabled && auto_check_update !== false
 
   const {
     data: updateInfo,
@@ -47,6 +49,7 @@ export const useUpdate = (enabled: boolean = true) => {
   } = useQuery({
     queryKey: ['checkUpdate'],
     queryFn: async () => {
+      if (PORTABLE_EDITION) return undefined
       const result = await checkUpdateSafe()
       updateLastCheckTime()
       return result
@@ -65,6 +68,15 @@ export const useUpdate = (enabled: boolean = true) => {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   })
+
+  if (PORTABLE_EDITION) {
+    return {
+      updateInfo: undefined,
+      checkUpdate: async () => undefined,
+      loading: false,
+      lastCheckUpdate: null as number | null,
+    }
+  }
 
   return {
     updateInfo,

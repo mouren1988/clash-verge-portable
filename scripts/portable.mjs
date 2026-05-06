@@ -21,26 +21,27 @@ const arch = target ? ARCH_MAP[target] : PROCESS_MAP[process.arch]
 async function resolvePortable() {
   if (process.platform !== 'win32') return
 
-  const releaseDir = target
-    ? `./src-tauri/target/${target}/release`
-    : `./src-tauri/target/release`
-  const configDir = path.join(releaseDir, '.config')
+  const candidateReleaseDirs = target
+    ? [`./src-tauri/target/${target}/release`, `./target/${target}/release`]
+    : ['./src-tauri/target/release', './target/release']
+  const releaseDir =
+    candidateReleaseDirs.find((dir) => fs.existsSync(dir)) ||
+    candidateReleaseDirs[0]
+  /// 与 Rust `dirs::init_portable_flag` 一致：exe 旁存在 `Data/` 即便携模式（对齐 iGame-for-Windows）。
+  const dataDir = path.join(releaseDir, 'Data')
 
   if (!fs.existsSync(releaseDir)) {
     throw new Error('could not found the release dir')
   }
 
-  await fsp.mkdir(configDir, { recursive: true })
-  if (!fs.existsSync(path.join(configDir, 'PORTABLE'))) {
-    await fsp.writeFile(path.join(configDir, 'PORTABLE'), '')
-  }
+  await fsp.mkdir(dataDir, { recursive: true })
   const zip = new AdmZip()
 
   zip.addLocalFile(path.join(releaseDir, 'clash-verge.exe'))
   zip.addLocalFile(path.join(releaseDir, 'verge-mihomo.exe'))
   zip.addLocalFile(path.join(releaseDir, 'verge-mihomo-alpha.exe'))
   zip.addLocalFolder(path.join(releaseDir, 'resources'), 'resources')
-  zip.addLocalFolder(configDir, '.config')
+  zip.addLocalFolder(dataDir, 'Data')
 
   const require = createRequire(import.meta.url)
   const packageJson = require('../package.json')

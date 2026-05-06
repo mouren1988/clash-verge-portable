@@ -79,10 +79,16 @@
         "location": "위치",
         "timezone": "시간대",
         "autoRefresh": "자동 새로고침",
-        "unknown": "알 수 없음"
+        "unknown": "알 수 없음",
+        "geoPartial": "Geo details unavailable"
       },
       "errors": {
         "load": "IP 정보를 가져오지 못했습니다"
+      },
+      "proxyStateToast": {
+        "successOpen": "Proxy enabled successfully",
+        "successClose": "Proxy disabled successfully",
+        "failOpen": "Failed to enable proxy"
       }
     },
     "currentProxy": {

@@ -79,10 +79,16 @@
         "location": "Местоположение",
         "timezone": "Часовой пояс",
         "autoRefresh": "Автообновление через",
-        "unknown": "Неизвестно"
+        "unknown": "Неизвестно",
+        "geoPartial": "Geo details unavailable"
       },
       "errors": {
         "load": "Не удалось получить информацию об IP"
+      },
+      "proxyStateToast": {
+        "successOpen": "Proxy enabled successfully",
+        "successClose": "Proxy disabled successfully",
+        "failOpen": "Failed to enable proxy"
       }
     },
     "currentProxy": {

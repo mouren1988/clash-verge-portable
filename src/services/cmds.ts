@@ -267,12 +267,37 @@ export async function patchVergeConfig(payload: IVergeConfig) {
   return invoke<void>('patch_verge_config', { payload })
 }
 
+export async function refreshSystemProxy() {
+  return invoke<void>('refresh_system_proxy')
+}
+
 export async function getSystemProxy() {
   return invoke<{
     enable: boolean
     server: string
     bypass: string
   }>('get_sys_proxy')
+}
+
+export type IpDetectionHttpResponse = {
+  status: number
+  body: string
+}
+
+export async function ipDetectionHttpGet(
+  url: string,
+  userAgent: string,
+  connectTimeoutMs: number,
+  requestTimeoutMs: number,
+  useMixedPortProxy?: boolean,
+) {
+  return invoke<IpDetectionHttpResponse>('ip_detection_http_get', {
+    url,
+    user_agent: userAgent,
+    connect_timeout_ms: connectTimeoutMs,
+    request_timeout_ms: requestTimeoutMs,
+    use_mixed_port_proxy: useMixedPortProxy,
+  })
 }
 
 export async function getAutotemProxy() {

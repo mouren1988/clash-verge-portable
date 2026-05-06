@@ -79,10 +79,16 @@
         "location": "Standort",
         "timezone": "Zeitzone",
         "autoRefresh": "Automatische Aktualisierung",
-        "unknown": "Unbekannt"
+        "unknown": "Unbekannt",
+        "geoPartial": "Geo details unavailable"
       },
       "errors": {
         "load": "IP-Informationen konnten nicht abgerufen werden"
+      },
+      "proxyStateToast": {
+        "successOpen": "Proxy enabled successfully",
+        "successClose": "Proxy disabled successfully",
+        "failOpen": "Failed to enable proxy"
       }
     },
     "currentProxy": {

@@ -79,10 +79,16 @@
         "location": "位置",
         "timezone": "时区",
         "autoRefresh": "自动刷新",
-        "unknown": "未知"
+        "unknown": "未知",
+        "geoPartial": "地理位置暂不可用"
       },
       "errors": {
         "load": "获取 IP 信息失败"
+      },
+      "proxyStateToast": {
+        "successOpen": "代理开启成功",
+        "successClose": "代理关闭成功",
+        "failOpen": "代理开启失败"
       }
     },
     "currentProxy": {

@@ -1,4 +1,4 @@
-use crate::{core::handle, utils::resolve::window::build_new_window};
+use crate::{core::handle, utils::resolve::window::build_new_window, utils::window_state};
 use clash_verge_limiter::Limiter;
 use clash_verge_logging::{Type, logging};
 use once_cell::sync::Lazy;
@@ -296,6 +296,10 @@ impl WindowManager {
 
             match build_new_window().await {
                 Ok(_) => {
+                    if let Some(window) = Self::get_main_window() {
+                        #[cfg(target_os = "windows")]
+                        window_state::restore_window_state(&window);
+                    }
                     logging!(info, Type::Window, "新窗口创建成功，等待前端渲染后显示");
 
                     #[cfg(target_os = "macos")]
