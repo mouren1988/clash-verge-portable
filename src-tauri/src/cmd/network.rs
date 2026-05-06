@@ -9,7 +9,7 @@ use network_interface::NetworkInterface;
 use serde::Serialize;
 use serde_yaml_ng::Mapping;
 use std::collections::HashMap;
-use std::error::Error;
+use std::error::Error as _;
 use std::net::TcpListener;
 use std::time::Duration;
 use sysproxy::{Autoproxy, Sysproxy};
@@ -141,12 +141,12 @@ async fn ip_detection_http_request(
         .timeout(request)
         .connect_timeout(connect);
 
-    if let Some(port) = mixed_port {
-        if port > 0 {
-            let proxy_url = format!("http://127.0.0.1:{port}");
-            let proxy = reqwest::Proxy::all(&proxy_url).map_err(|e| e.to_string())?;
-            builder = builder.proxy(proxy);
-        }
+    if let Some(port) = mixed_port
+        && port > 0
+    {
+        let proxy_url = format!("http://127.0.0.1:{port}");
+        let proxy = reqwest::Proxy::all(&proxy_url).map_err(|e| e.to_string())?;
+        builder = builder.proxy(proxy);
     }
 
     let client = builder.build().map_err(|e| e.to_string())?;

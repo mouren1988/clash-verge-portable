@@ -102,10 +102,10 @@ pub fn restore_window_state(window: &WebviewWindow) {
         }
     }
 
-    if let (Some(w), Some(h)) = (data.width, data.height) {
-        if let Err(e) = window.set_size(tauri::PhysicalSize::new(w, h)) {
-            logging!(warn, Type::Window, "Failed to restore window size: {e}");
-        }
+    if let (Some(w), Some(h)) = (data.width, data.height)
+        && let Err(e) = window.set_size(tauri::PhysicalSize::new(w, h))
+    {
+        logging!(warn, Type::Window, "Failed to restore window size: {e}");
     }
 
     logging!(debug, Type::Window, "Window state restored from {path:?}");

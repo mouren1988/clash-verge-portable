@@ -120,12 +120,13 @@ mod app_init {
     /// Setup window state management.
     /// On Windows we use fully manual persistence (window_state.rs) so all
     /// writes stay inside portable `Data/app` instead of `%APPDATA%`.
+    #[allow(clippy::unnecessary_wraps)]
     pub fn setup_window_state(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         #[cfg(target_os = "windows")]
         {
             logging!(info, Type::Setup, "Windows: 使用手动窗口状态持久化");
             let _ = app;
-            return Ok(());
+            Ok(())
         }
 
         #[cfg(not(target_os = "windows"))]

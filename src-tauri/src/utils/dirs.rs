@@ -122,15 +122,15 @@ pub fn windows_portable_local_webview_root() -> Result<PathBuf> {
 /// `%LOCALAPPDATA%\<identifier>\`（例如 `io.github.clash-verge-rev.clash-verge-rev`），与「仅部分解析成功」的 `Err` 表现相同。
 #[cfg(target_os = "windows")]
 pub fn resolve_windows_webview_user_data_folder() -> PathBuf {
-    if let Ok(s) = std::env::var("WEBVIEW2_USER_DATA_FOLDER") {
-        if !s.is_empty() {
-            return PathBuf::from(s);
-        }
+    if let Ok(s) = std::env::var("WEBVIEW2_USER_DATA_FOLDER")
+        && !s.is_empty()
+    {
+        return PathBuf::from(s);
     }
-    if *PORTABLE_FLAG.get().unwrap_or(&false) {
-        if let Ok(p) = effective_portable_webview_user_data_dir() {
-            return p;
-        }
+    if *PORTABLE_FLAG.get().unwrap_or(&false)
+        && let Ok(p) = effective_portable_webview_user_data_dir()
+    {
+        return p;
     }
     if let Ok(p) = windows_portable_local_webview_root() {
         return p;
