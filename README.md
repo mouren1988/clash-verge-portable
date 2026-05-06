@@ -46,37 +46,6 @@ Supports Windows (x64/x86), Linux (x64/arm64) and macOS 11+ (intel/apple).
 
 ---
 
-## Promotion
-
-### ✈️ [狗狗加速 —— 技术流机场 Doggygo VPN](https://verge.dginv.click/#/register?code=oaxsAGo6)
-
-🚀 高性能海外技术流机场，支持免费试用与优惠套餐，全面解锁流媒体及 AI 服务，全球首家采用 **QUIC 协议**。
-
-🎁 使用 **Clash Verge 专属邀请链接** 注册即送 **3 天免费试用**，每日 **1GB 流量**：👉 [点此注册](https://verge.dginv.click/#/register?code=oaxsAGo6)
-
-#### **核心优势：**
-
-- 📱 自研 iOS 客户端（业内"唯一"）技术经得起考验，极大**持续研发**投入
-- 🧑‍💻 **12小时真人客服**(顺带解决 Clash Verge 使用问题)
-- 💰 优惠套餐每月**仅需 21 元，160G 流量，年付 8 折**
-- 🌍 海外团队，无跑路风险，高达 50% 返佣
-- ⚙️ **集群负载均衡**设计，**负载监控和随时扩容**，高速专线(兼容老客户端)，极低延迟，无视晚高峰，4K 秒开
-- ⚡ 全球首家**Quic 协议机场**，现已上线更快的 Quic 类协议(Clash Verge 客户端最佳搭配)
-- 🎬 解锁**流媒体及 主流 AI**
-
-🌐 官网：👉 [https://狗狗加速.com](https://verge.dginv.click/#/register?code=oaxsAGo6)
-
-### 🤖 [GPTKefu —— 与 Crisp 深度整合的 AI 智能客服平台](https://gptkefu.com)
-
-- 🧠 深度理解完整对话上下文 + 图片识别，自动给出专业、精准的回复，告别机械式客服。
-- ♾️ **不限回答数量**，无额度焦虑，区别于其他按条计费的 AI 客服产品。
-- 💬 售前咨询、售后服务、复杂问题解答，全场景轻松覆盖，真实用户案例已验证效果。
-- ⚡ 3 分钟极速接入，零门槛上手，即刻提升客服效率与客户满意度。
-- 🎁 高级套餐免费试用 14 天，先体验后付费：👉 [立即试用](https://gptkefu.com)
-- 📢 智能客服TG 频道：[@crisp_ai](https://t.me/crisp_ai)
-
----
-
 ## Features
 
 - 基于性能强劲的 Rust 和 Tauri 2 框架
@@ -86,6 +55,17 @@ Supports Windows (x64/x86), Linux (x64/arm64) and macOS 11+ (intel/apple).
 - 系统代理和守卫、`TUN(虚拟网卡)` 模式。
 - 可视化节点和规则编辑
 - WebDav 配置备份和同步
+
+## 本分支相对原版的主要改动
+
+- 便携版目录结构对齐 `iGame-for-Windows`：以 `Data/` 为根，配置与状态写入 `Data/app/`。
+- Windows WebView2 启动路径与数据目录增强：优先使用便携目录，增加可写性校验和回退策略，修复便携版偶发白屏。
+- 安装器 WebView2 改为显性提示（非静默），安装体验与 iGame+ 一致。
+- Windows 系统代理应用顺序修正（PAC/全局代理顺序），解决“开启后自动回退”问题；退出时可正确清理代理状态。
+- IP 信息查询链路改为后端直连请求（新增 `panel_http_request`），降低对核心 mixed 端口状态的依赖，提高稳定性。
+- 首页 IP 信息卡与自动刷新参数同步 iGame+，优化地理信息部分可用时的显示逻辑。
+- Windows 便携模式下改为手动窗口状态持久化，窗口位置大小写入 `Data/app/window_state.json`，不再落到 `%APPDATA%`。
+- 便携打包脚本更新：同时兼容不同 release 产物目录，并按 `Data/` 结构生成 zip。
 
 ### FAQ
 
