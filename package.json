@@ -118,8 +118,8 @@
     "terser": "^5.46.1",
     "typescript": "^6.0.0",
     "typescript-eslint": "^8.57.1",
-    "vite": "^8.0.1",
-    "vite-plugin-svgr": "^5.0.0"
+    "vite": "8.0.3",
+    "vite-plugin-svgr": "5.0.0"
   },
   "lint-staged": {
     "*.{ts,tsx,js,mjs}": [
@@ -139,6 +139,10 @@
       "es5-ext",
       "meta-json-schema",
       "unrs-resolver"
-    ]
+    ],
+    "overrides": {
+      "lru-cache": "5.1.1",
+      "entities": "4.5.0"
+    }
   }
 }

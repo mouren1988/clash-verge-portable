@@ -40,7 +40,6 @@ import { useVerge } from '@/hooks/use-verge'
 import {
   useAppRefreshers,
   useClashConfigData,
-  useCoreDataStatus,
   useProxiesData,
   useRulesData,
 } from '@/providers/app-data-context'
@@ -133,7 +132,6 @@ export const CurrentProxyCard = () => {
   const { clashConfig } = useClashConfigData()
   const { rules } = useRulesData()
   const { refreshProxy } = useAppRefreshers()
-  const { isCoreDataPending } = useCoreDataStatus()
   const { verge } = useVerge()
   const { current: currentProfile } = useProfiles()
   const autoDelayEnabled = verge?.enable_auto_delay_detection ?? true
@@ -440,23 +438,12 @@ export const CurrentProxyCard = () => {
 
       const filteredGroups = Array.from(groupsMap.values())
 
-      const pickDefaultProxyForGroup = (
-        group: ProxyGroupOption,
-        savedProxy: string | null,
-      ) => {
-        if (savedProxy && group.all.includes(savedProxy)) {
-          return savedProxy
-        }
-        if (group.all.includes('自动选择')) {
-          return '自动选择'
-        }
-        return group.now || group.all[0] || ''
-      }
+      const resolveGroupNow = (group: ProxyGroupOption) =>
+        normalizePolicyName(group.now) || group.all[0] || ''
 
       let newProxy = ''
       let newDisplayProxy = null
       let newGroup = prev.selection.group
-      const savedProxyForProfile = readProfileScopedItem(STORAGE_KEY_PROXY)
 
       if (isDirectMode) {
         newGroup = 'DIRECT'
@@ -486,10 +473,7 @@ export const CurrentProxyCard = () => {
             filteredGroups[0]
           if (firstGroup) {
             newGroup = firstGroup.name
-            newProxy = pickDefaultProxyForGroup(
-              firstGroup,
-              savedProxyForProfile,
-            )
+            newProxy = resolveGroupNow(firstGroup)
             newDisplayProxy = proxies.records?.[newProxy] || null
 
             if (!isGlobalMode && !isDirectMode) {
@@ -500,10 +484,7 @@ export const CurrentProxyCard = () => {
             }
           }
         } else if (currentGroup) {
-          newProxy = pickDefaultProxyForGroup(
-            currentGroup,
-            savedProxyForProfile,
-          )
+          newProxy = resolveGroupNow(currentGroup)
           newDisplayProxy = proxies.records?.[newProxy] || null
         }
       }
@@ -553,21 +534,6 @@ export const CurrentProxyCard = () => {
     changeProxy,
   ])
 
-  // 使用防抖包装状态更新
-  const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const debouncedSetState = useCallback(
-    (updateFn: (prev: ProxyState) => ProxyState) => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current)
-      }
-      timeoutRef.current = setTimeout(() => {
-        setState(updateFn)
-      }, 300)
-    },
-    [setState],
-  )
-
   // 处理代理组变更
   const handleGroupChange = useCallback(
     (event: SelectChangeEvent<string>) => {
@@ -612,7 +578,7 @@ export const CurrentProxyCard = () => {
       const currentGroup = state.selection.group
       const previousProxy = state.selection.proxy
 
-      debouncedSetState((prev: ProxyState) => ({
+      setState((prev: ProxyState) => ({
         ...prev,
         selection: {
           ...prev.selection,
@@ -641,7 +607,6 @@ export const CurrentProxyCard = () => {
       isDirectMode,
       isGlobalMode,
       state.selection,
-      debouncedSetState,
       handleSelectChange,
       writeProfileScopedItem,
       getProfileStorageKey,

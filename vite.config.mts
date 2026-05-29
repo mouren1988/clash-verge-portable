@@ -28,9 +28,14 @@ export default defineConfig({
     chunkSizeWarningLimit: 4000,
   },
   resolve: {
+    dedupe: ['react', 'react-dom', 'react/jsx-runtime'],
     alias: {
       '@': path.resolve('./src'),
       '@root': path.resolve('.'),
+      // Rolldown (Vite 8) strictly honors package exports; older deps import subpaths
+      // that entities@4 exposes only as ./lib/escape.js and ./lib/decode.js.
+      'entities/escape': 'entities/lib/escape.js',
+      'entities/decode': 'entities/lib/decode.js',
     },
   },
   define: {

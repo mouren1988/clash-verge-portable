@@ -9,7 +9,6 @@ use crate::{
         handle::Handle,
         hotkey::Hotkey,
         logger::Logger,
-        service::{SERVICE_MANAGER, ServiceManager, is_service_ipc_path_exists},
         sysopt,
         tray::Tray,
     },
@@ -56,7 +55,7 @@ pub fn resolve_setup_async() {
         init_window().await;
 
         let core_init = AsyncHandler::spawn(|| async {
-            init_service_manager().await;
+            init_service_manager();
             init_core_manager().await;
             init_system_proxy().await;
             init_system_proxy_guard().await;
@@ -173,16 +172,8 @@ pub(super) async fn init_verge_config() {
     logging_error!(Type::Setup, Config::init_config().await);
 }
 
-pub(super) async fn init_service_manager() {
-    clash_verge_service_ipc::set_config(Some(ServiceManager::config())).await;
-    if !is_service_ipc_path_exists() {
-        return;
-    }
-    let mut manager = SERVICE_MANAGER.lock().await;
-    if manager.init().await.is_ok() {
-        logging_error!(Type::Setup, manager.refresh().await);
-    }
-    drop(manager);
+pub(super) const fn init_service_manager() {
+    // 系统服务模式已移除，内核仅以 Sidecar 运行。
 }
 
 pub(super) async fn init_core_manager() {

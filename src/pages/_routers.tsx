@@ -17,14 +17,16 @@ import RulesSvg from '@/assets/image/itemicon/rules.svg?react'
 import SettingsSvg from '@/assets/image/itemicon/settings.svg?react'
 import UnlockSvg from '@/assets/image/itemicon/unlock.svg?react'
 
-import Layout from './_layout'
-import ConnectionsPage from './connections'
-import HomePage from './home'
-import ProfilesPage from './profiles'
-import ProxiesPage from './proxies'
-import RulesPage from './rules'
-import SettingsPage from './settings'
-import UnlockPage from './unlock'
+import {
+  ConnectionsPage,
+  HomePage,
+  Layout,
+  ProfilesPage,
+  ProxiesPage,
+  RulesPage,
+  SettingsPage,
+  UnlockPage,
+} from './_lazy-pages'
 
 export const navItems = [
   {

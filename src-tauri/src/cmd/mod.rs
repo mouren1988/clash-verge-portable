@@ -22,21 +22,34 @@ pub mod verge;
 pub mod webdav;
 
 // Re-export all command functions for backwards compatibility
+#[allow(unused_imports)]
 pub use app::*;
+#[allow(unused_imports)]
 pub use backup::*;
+#[allow(unused_imports)]
 pub use clash::*;
+#[allow(unused_imports)]
 pub use lightweight::*;
 pub use media_unlock_checker::*;
 pub use network::*;
+#[allow(unused_imports)]
 pub use profile::*;
+#[allow(unused_imports)]
 pub use proxy::*;
 pub use runtime::*;
+#[allow(unused_imports)]
 pub use save_profile::*;
+#[allow(unused_imports)]
 pub use service::*;
+#[allow(unused_imports)]
 pub use system::*;
+#[allow(unused_imports)]
 pub use uwp::*;
+#[allow(unused_imports)]
 pub use validate::*;
+#[allow(unused_imports)]
 pub use verge::*;
+#[allow(unused_imports)]
 pub use webdav::*;
 
 pub trait StringifyErr<T> {

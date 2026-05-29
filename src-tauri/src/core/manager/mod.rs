@@ -15,7 +15,6 @@ pub(crate) static CLASH_LOGGER: Lazy<Arc<AsyncLogger>> = Lazy::new(|| Arc::new(A
 
 #[derive(Debug, serde::Serialize, PartialEq, Eq)]
 pub enum RunningMode {
-    Service,
     Sidecar,
     NotRunning,
 }
@@ -23,7 +22,6 @@ pub enum RunningMode {
 impl fmt::Display for RunningMode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Service => write!(f, "Service"),
             Self::Sidecar => write!(f, "Sidecar"),
             Self::NotRunning => write!(f, "NotRunning"),
         }

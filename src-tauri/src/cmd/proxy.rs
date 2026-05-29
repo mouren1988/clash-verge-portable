@@ -26,13 +26,8 @@ pub async fn sync_tray_proxy_selection() -> CmdResult<()> {
 
 async fn run_tray_sync_loop() {
     loop {
-        match Tray::global().update_menu().await {
-            Ok(_) => {
-                logging!(info, Type::Cmd, "Tray proxy selection synced successfully");
-            }
-            Err(e) => {
-                logging!(error, Type::Cmd, "Failed to sync tray proxy selection: {e}");
-            }
+        if let Err(e) = Tray::global().update_menu().await {
+            logging!(error, Type::Cmd, "Failed to sync tray proxy selection: {e}");
         }
 
         if !TRAY_SYNC_PENDING.swap(false, Ordering::AcqRel) {

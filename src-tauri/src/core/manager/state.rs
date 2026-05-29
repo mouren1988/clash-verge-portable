@@ -2,7 +2,7 @@ use super::{CoreManager, RunningMode};
 use crate::{
     AsyncHandler,
     config::{Config, IClashTemp},
-    core::{handle, logger::Logger, manager::CLASH_LOGGER, service},
+    core::{handle, logger::Logger, manager::CLASH_LOGGER},
     logging,
     utils::dirs,
 };
@@ -16,7 +16,6 @@ use tauri_plugin_shell::ShellExt as _;
 impl CoreManager {
     pub async fn get_clash_logs(&self) -> Result<Vec<CompactString>> {
         match *self.get_running_mode() {
-            RunningMode::Service => service::get_clash_logs_by_service().await,
             RunningMode::Sidecar => Ok(CLASH_LOGGER.get_logs().await),
             RunningMode::NotRunning => Ok(Vec::new()),
         }
@@ -104,22 +103,5 @@ impl CoreManager {
                 result
             );
         }
-    }
-
-    pub(super) async fn start_core_by_service(&self) -> Result<()> {
-        logging!(info, Type::Core, "Starting core in service mode");
-        let config_file = Config::generate_file(crate::config::ConfigType::Run).await?;
-        service::run_core_by_service(&config_file).await?;
-        self.set_running_mode(RunningMode::Service);
-        Ok(())
-    }
-
-    pub(super) async fn stop_core_by_service(&self) -> Result<()> {
-        logging!(info, Type::Core, "Stopping service");
-        defer! {
-            self.set_running_mode(RunningMode::NotRunning);
-        }
-        service::stop_core_by_service().await?;
-        Ok(())
     }
 }

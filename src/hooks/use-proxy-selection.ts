@@ -10,6 +10,25 @@ import { useVerge } from '@/hooks/use-verge'
 import { syncTrayProxySelection } from '@/services/cmds'
 import { debugLog } from '@/utils/debug'
 
+const HOME_STORAGE_KEY_GROUP = 'clash-verge-selected-proxy-group'
+const HOME_STORAGE_KEY_PROXY = 'clash-verge-selected-proxy'
+
+function writeHomeProxySelectionStorage(
+  profileUid: string | undefined,
+  groupName: string,
+  proxyName: string,
+) {
+  if (typeof window === 'undefined') return
+  const groupKey = profileUid
+    ? `${HOME_STORAGE_KEY_GROUP}:${profileUid}`
+    : HOME_STORAGE_KEY_GROUP
+  const proxyKey = profileUid
+    ? `${HOME_STORAGE_KEY_PROXY}:${profileUid}`
+    : HOME_STORAGE_KEY_PROXY
+  localStorage.setItem(groupKey, groupName)
+  localStorage.setItem(proxyKey, proxyName)
+}
+
 // 缓存连接清理
 const cleanupConnections = async (previousProxy: string) => {
   try {
@@ -81,6 +100,8 @@ export const useProxySelection = (options: ProxySelectionOptions = {}) => {
       patchCurrent({ selected }).catch((error) => {
         console.error('[ProxySelection] 保存代理选择失败:', error)
       })
+
+      writeHomeProxySelectionStorage(current.uid, groupName, proxyName)
     },
     [current, patchCurrent],
   )

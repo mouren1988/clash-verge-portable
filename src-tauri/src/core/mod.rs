@@ -5,7 +5,6 @@ pub mod hotkey;
 pub mod logger;
 pub mod manager;
 mod notification;
-pub mod service;
 pub mod sysopt;
 pub mod timer;
 pub mod tray;

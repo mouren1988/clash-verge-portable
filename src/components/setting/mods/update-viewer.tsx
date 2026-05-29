@@ -142,10 +142,9 @@ export function UpdateViewer({ ref }: { ref?: Ref<DialogRef> }) {
         <ReactMarkdown
           rehypePlugins={[rehypeRaw]}
           components={{
-            a: ({ ...props }) => {
-              const { children } = props
+            a: ({ children, node: _node, ref: _ref, ...props }) => {
               return (
-                <a {...props} target="_blank">
+                <a {...props} target="_blank" rel="noopener noreferrer">
                   {children}
                 </a>
               )
